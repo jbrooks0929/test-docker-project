@@ -1,20 +1,35 @@
 pipeline {
     agent any
 
+    environment {
+        AWS_REGION = 'us-east-1'
+        ECR_REPO = '676327216025.dkr.ecr.us-east-1.amazonaws.com/test-docker-project'
+        IMAGE_NAME = 'test-docker-project:django'
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/jbrooks0929/test-docker-project'
+                checkout scmGit(
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/jbrooks0929/test-docker-project.git'
+                    ]]
+                )
             }
         }
 
         stage('Login to ECR') {
             steps {
-                withAWS(region: 'us-east-1', credentials: 'aws-creds') {
+                withAWS(region: "${AWS_REGION}", credentials: 'aws-creds') {
                     powershell '''
-                    aws ecr get-login-password --region us-east-1 |
-                    docker login --username AWS --password-stdin 676327216025.dkr.ecr.us-east-1.amazonaws.com
+                    $ErrorActionPreference = "Stop"
+
+                    aws --version
+
+                    aws ecr get-login-password --region $env:AWS_REGION |
+                        docker login --username AWS --password-stdin $env:ECR_REPO
                     '''
                 }
             }
@@ -23,8 +38,11 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 powershell '''
-                docker build -t test-docker-project:django .
-                docker tag test-docker-project:django 676327216025.dkr.ecr.us-east-1.amazonaws.com/test-docker-project:latest
+                $ErrorActionPreference = "Stop"
+
+                docker build -t $env:IMAGE_NAME .
+
+                docker tag $env:IMAGE_NAME $env:ECR_REPO:latest
                 '''
             }
         }
@@ -32,9 +50,21 @@ pipeline {
         stage('Push Image to ECR') {
             steps {
                 powershell '''
-                docker push 676327216025.dkr.ecr.us-east-1.amazonaws.com/test-docker-project:latest
+                $ErrorActionPreference = "Stop"
+
+                docker push $env:ECR_REPO:latest
                 '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Docker image successfully pushed to Amazon ECR.'
+        }
+
+        failure {
+            echo 'Pipeline failed.'
         }
     }
 }
