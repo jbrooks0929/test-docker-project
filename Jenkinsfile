@@ -43,15 +43,14 @@ pipeline {
             powershell '''
             $ErrorActionPreference = "Stop"
 
+            Write-Host "Clearing old Docker credentials..."
+
+            docker logout $env:ECR_REGISTRY
+
             Write-Host "Logging into ECR..."
 
-            $password = aws ecr get-login-password --region $env:AWS_REGION
-
-            if ([string]::IsNullOrWhiteSpace($password)) {
-                throw "ECR password token is empty"
-            }
-
-            $password | docker login `
+            aws ecr get-login-password --region $env:AWS_REGION |
+            docker login `
                 --username AWS `
                 --password-stdin `
                 $env:ECR_REGISTRY
@@ -60,6 +59,15 @@ pipeline {
     }
 }
 
+        stage('Docker Test') {
+    steps {
+        powershell '''
+        whoami
+        docker version
+        docker info
+        '''
+    }
+}
         stage('Build Docker Image') {
     steps {
         powershell '''
