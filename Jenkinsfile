@@ -19,43 +19,64 @@ pipeline {
                 )
             }
         }
+        stage('Debug AWS') {
+    steps {
+        withAWS(region: "${AWS_REGION}", credentials: 'aws-creds') {
+            powershell '''
+            Write-Host "Testing AWS identity..."
+            aws sts get-caller-identity
+
+            Write-Host "Testing ECR token..."
+            $token = aws ecr get-login-password --region us-east-1
+
+            Write-Host "Token length:"
+            $token.Length
+            '''
+        }
+    }
+}
 
         stage('Login to ECR') {
-            steps {
-                withAWS(region: "${AWS_REGION}", credentials: 'aws-creds') {
-                    powershell '''
-                    $ErrorActionPreference = "Stop"
+    steps {
+        withAWS(region: "${AWS_REGION}", credentials: 'aws-creds') {
+            powershell '''
+            $ErrorActionPreference = "Stop"
 
-                    aws --version
+            aws --version
 
-                    aws ecr get-login-password --region $env:AWS_REGION |
-                        docker login --username AWS --password-stdin $env:ECR_REPO
-                    '''
-                }
-            }
+            $password = aws ecr get-login-password --region $env:AWS_REGION
+
+            docker login `
+                --username AWS `
+                --password $password `
+                $env:ECR_REGISTRY
+            '''
         }
+    }
+}
 
         stage('Build Docker Image') {
-            steps {
-                powershell '''
-                $ErrorActionPreference = "Stop"
+    steps {
+        powershell '''
+        $ErrorActionPreference = "Stop"
 
-                docker build -t $env:IMAGE_NAME .
+        docker build -t $env:IMAGE_NAME .
 
-                docker tag $env:IMAGE_NAME $env:ECR_REPO:latest
-                '''
-            }
-        }
+        docker tag $env:IMAGE_NAME `
+        $env:ECR_REGISTRY/$env:ECR_REPO:latest
+        '''
+    }
+}
 
-        stage('Push Image to ECR') {
-            steps {
-                powershell '''
-                $ErrorActionPreference = "Stop"
+       stage('Push Image to ECR') {
+    steps {
+        powershell '''
+        $ErrorActionPreference = "Stop"
 
-                docker push $env:ECR_REPO:latest
-                '''
-            }
-        }
+        docker push $env:ECR_REGISTRY/$env:ECR_REPO:latest
+        '''
+    }
+}
     }
 
     post {
