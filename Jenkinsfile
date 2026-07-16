@@ -40,20 +40,15 @@ pipeline {
         stage('Login to ECR') {
     steps {
         withAWS(region: "${AWS_REGION}", credentials: 'aws-creds') {
-            powershell '''
-            $ErrorActionPreference = "Stop"
+            bat '''
+            aws ecr get-login-password --region us-east-1 > ecr_password.txt
 
-            Write-Host "Clearing old Docker credentials..."
+            docker login ^
+            --username AWS ^
+            --password-stdin ^
+            676327216025.dkr.ecr.us-east-1.amazonaws.com < ecr_password.txt
 
-            docker logout $env:ECR_REGISTRY
-
-            Write-Host "Logging into ECR..."
-
-            aws ecr get-login-password --region $env:AWS_REGION |
-            docker login `
-                --username AWS `
-                --password-stdin `
-                $env:ECR_REGISTRY
+            del ecr_password.txt
             '''
         }
     }
@@ -61,7 +56,7 @@ pipeline {
 
         stage('Docker Test') {
     steps {
-        powershell '''
+        bat '''
         whoami
         docker version
         docker info
