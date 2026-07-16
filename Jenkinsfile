@@ -70,8 +70,10 @@ pipeline {
 
         docker build -t $env:IMAGE_NAME .
 
-        docker tag $env:IMAGE_NAME `
-        $env:ECR_REGISTRY/$env:ECR_REPO:latest
+        Write-Host "Tagging image:"
+        Write-Host "$env:ECR_REGISTRY/$env:ECR_REPO:latest"
+
+        docker tag $env:IMAGE_NAME "${env:ECR_REGISTRY}/${env:ECR_REPO}:latest"
         '''
     }
 }
@@ -81,7 +83,7 @@ pipeline {
         powershell '''
         $ErrorActionPreference = "Stop"
 
-        docker push $env:ECR_REGISTRY/$env:ECR_REPO:latest
+        docker push "${env:ECR_REGISTRY}/${env:ECR_REPO}:latest"
         '''
     }
 }
