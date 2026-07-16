@@ -43,10 +43,15 @@ pipeline {
             powershell '''
             $ErrorActionPreference = "Stop"
 
-            aws --version
+            Write-Host "Logging into ECR..."
 
-            aws ecr get-login-password --region $env:AWS_REGION |
-            docker login `
+            $password = aws ecr get-login-password --region $env:AWS_REGION
+
+            if ([string]::IsNullOrWhiteSpace($password)) {
+                throw "ECR password token is empty"
+            }
+
+            $password | docker login `
                 --username AWS `
                 --password-stdin `
                 $env:ECR_REGISTRY
