@@ -1,11 +1,12 @@
 pipeline {
     agent any
 
-    environment {
-        AWS_REGION = 'us-east-1'
-        ECR_REPO = '676327216025.dkr.ecr.us-east-1.amazonaws.com/test-docker-project'
-        IMAGE_NAME = 'test-docker-project:django'
-    }
+   environment {
+    AWS_REGION = 'us-east-1'
+    ECR_REGISTRY = '676327216025.dkr.ecr.us-east-1.amazonaws.com'
+    ECR_REPO = 'test-docker-project'
+    IMAGE_NAME = 'test-docker-project:django'
+}
 
     stages {
 
@@ -44,11 +45,10 @@ pipeline {
 
             aws --version
 
-            $password = aws ecr get-login-password --region $env:AWS_REGION
-
+            aws ecr get-login-password --region $env:AWS_REGION |
             docker login `
                 --username AWS `
-                --password $password `
+                --password-stdin `
                 $env:ECR_REGISTRY
             '''
         }
